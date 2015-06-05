@@ -1,0 +1,2 @@
+This is an Scratch HTTP helper for the PLCS5 extension. It's used to connect
+scratch to a Siemens S5 CPU.

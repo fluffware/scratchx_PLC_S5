@@ -1,0 +1,8 @@
+{"extensionName":"PLC_S5",
+ "extensionPort":28280,
+ "blockSpecs":[
+     [" ","set output %n to %b","output", "state"],
+     [" ", "string %s, %s", "strings", "str1", "str2"]
+ ],
+ "httpRootPath": "http_root"	  
+}

@@ -125,11 +125,8 @@ g_value_get_as_int(const GValue *gvalue)
 static void
 configure_http_server(AppContext *app)
 {
-  GError *err = NULL;
+  /* GError *err = NULL; */
   guint port;
-  /* Break update loops */
-  g_object_set(app->http_server, "http-sets-values", FALSE,
-	       "user-changes-signaled", FALSE, NULL);
   g_object_set(app->http_server, "http-port", app->http_port, NULL);
   g_object_set(app->http_server, "http-root", app->http_root, NULL);
   
@@ -243,6 +240,28 @@ const GOptionEntry app_options[] = {
   {NULL}
 };
 
+static gchar *
+cmd_handler(HTTPServer *server, GQuark cmd, const gchar **params)
+{
+  g_debug("Received cmd: %s", g_quark_to_string(cmd));
+  while(*params != NULL) {
+    g_debug("Param: %s", *params);
+    params++;
+  }
+  return NULL;
+}
+
+static gchar *
+cmd_foo_handler(HTTPServer *server, GQuark cmd, const gchar **params)
+{
+  g_debug("Received foo: %s", g_quark_to_string(cmd));
+  while(*params != NULL) {
+    g_debug("Param: %s", *params);
+    params++;
+  }
+  return g_strdup("bar");;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -285,6 +304,11 @@ main(int argc, char *argv[])
   }
   
   app_ctxt.http_server = http_server_new();
+  {
+    g_signal_connect(app_ctxt.http_server, "cmd-received", (GCallback)cmd_handler, NULL);
+     g_signal_connect(app_ctxt.http_server, "cmd-received::foo", (GCallback)cmd_foo_handler, NULL);
+    
+  }
   configure_http_server(&app_ctxt);
   if (!http_server_start(app_ctxt.http_server, &err)) {
     g_critical("Failed to setup HTTP server: %s\n", err->message);

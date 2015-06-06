@@ -2,7 +2,11 @@
  "extensionPort":28280,
  "blockSpecs":[
      [" ","set output %n to %b","output", "state"],
-     [" ", "string %s, %s", "strings", "str1", "str2"]
+     [" ","set output %n to %m.iostate", "output"],
+     ["b", "input %n is %m.iostate", "input"]
  ],
+ "menus": {
+     "iostate":["off","on"]
+ },
  "httpRootPath": "http_root"	  
 }

@@ -1,8 +1,8 @@
 {"extensionName":"PLC_S5",
  "extensionPort":28280,
  "blockSpecs":[
-     [" ","set output %n to %b","output", "state"],
-     [" ","set output %n to %m.iostate", "output"],
+     [" ","set output %n to %b","output", 0],
+     [" ","set output %n to %m.iostate", "output" ,0],
      ["b", "input %n is %m.iostate", "input"]
  ],
  "menus": {

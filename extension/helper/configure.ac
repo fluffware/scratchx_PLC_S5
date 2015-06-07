@@ -5,7 +5,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_PROG_CC
 AC_PROG_CXX
 AC_SYS_LARGEFILE
-AM_PATH_GLIB_2_0(2.30.0,,, [gobject, gio])
+AM_PATH_GLIB_2_0(2.30.0,,, [gobject gio gio-unix])
 # Check for microhttpd
 MICROHTTPD_CFLAGS=""
 AC_CHECK_HEADERS([microhttpd.h],[MICROHTTPD_CFLAGS=""])

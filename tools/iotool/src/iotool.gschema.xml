@@ -1,0 +1,32 @@
+<schemalist>
+  <schema id="se.fluffware.apps.cpu95.iotool" path="/se/fluffware/" gettext-domain="iotool">
+    
+    <key name="panel-1-enabled" type="b">
+      
+      <default >true</default>
+      <summary>Panel 1 enabled</summary>
+      <description>
+	Panel 1 is enabled
+	</description>
+    </key>
+
+    <key name="panel-2-enabled" type="b">
+      <default >false</default>
+      <summary>Panel 2 enabled</summary>
+      <description>
+	Panel 2 is enabled
+      </description>
+    </key>
+    
+
+    <key name="panel-3-enabled" type="b">
+      <default >false</default>
+      <summary>Panel 3 enabled</summary>
+      <description>
+	Panel 3 is enabled
+      </description>
+    </key>
+    
+  </schema>
+
+</schemalist>

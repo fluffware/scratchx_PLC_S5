@@ -1,0 +1,23 @@
+AC_PREREQ(2.60)
+AC_INIT(iLED_sim, [0.1])
+
+AM_INIT_AUTOMAKE
+AC_CONFIG_MACRO_DIR([m4])
+AC_PROG_CC
+
+AM_PATH_GLIB_2_0(,,, gio)
+
+HAVE_GTK3=no
+AM_PATH_GTK_3_0(,[HAVE_GTK3=yes])
+
+
+AC_SUBST(ACLOCAL_AMFLAGS, "-I m4")
+dnl Check for pkgconfig first
+AC_CHECK_PROG(HAVE_PKGCONFIG, pkg-config, yes, no)
+
+
+GLIB_GSETTINGS
+
+AC_CONFIG_FILES([Makefile src/Makefile])
+
+AC_OUTPUT

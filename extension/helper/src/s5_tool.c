@@ -253,7 +253,7 @@ db_write_done(GObject *source_object,
     g_printerr("Failed to write memory: %s\n", err->message);
     g_error_free(err);
   } else {
-    g_debug("DB_READ done");
+    g_debug("DB_WRITE done");
   }
   g_main_loop_quit(app->loop);
 }

@@ -474,35 +474,34 @@ AS511_connection_sys_par_finish(AS511Connection *conn,
 }
 
 /* DB_READ function */
+#define MAX_MEM_BLOCK_SIZE 1020
 
-static guint8 *
-AS511_connection_db_read(AS511Connection *conn, 
-		     guint16 first, guint16 last,
-		     GError **err)
+gboolean
+read_memory_block(AS511Connection *conn, 
+		  guint16 first, gsize len,
+		  guint8 *mem_block,
+		  GError **err)
 {
-  guint8 *data;
   gssize read_size;
   guint8 buf[6];
   guint8 answer;
-  gssize len = last - first + 1;
-  if (!AS511_connection_send_start(conn, 0x04, &answer, err)) return NULL;
+  guint16 last = first + len - 1; 
+  if (!AS511_connection_send_start(conn, 0x04, &answer, err)) return FALSE;
   buf[0] = first>>8;
   buf[1] = first;
   buf[2] = last>>8;
   buf[3] = last;
   buf[4] = DLE;
   buf[5] = EOT;
-  if (!write_data_escaped(conn,buf,4,err)) return NULL;
-  if (!write_data(conn,buf+4,2,err)) return NULL;
-  if (!AS511_connection_wait_ack(conn, err)) return NULL;
-  if (!AS511_connection_wait_stx(conn, err)) return NULL;
+  if (!write_data_escaped(conn,buf,4,err)) return FALSE;
+  if (!write_data(conn,buf+4,2,err)) return FALSE;
+  if (!AS511_connection_wait_ack(conn, err)) return FALSE;
+  if (!AS511_connection_wait_stx(conn, err)) return FALSE;
   /* Skip the first 5 bytes of data */
-  if (!read_data(conn, buf, 5, err)) return NULL;
-  data =  g_new(guint8, len);
-  read_size = read_block(conn,data,len,err);
+  if (!read_data(conn, buf, 5, err)) return FALSE;
+  read_size = read_block(conn,mem_block,len,err);
   if (read_size < 0) {
-    g_free(data);
-    return NULL;
+    return FALSE;
   }
   g_debug("read_size: %"G_GSSIZE_FORMAT, read_size);
   if (read_size != len) {
@@ -512,10 +511,35 @@ AS511_connection_db_read(AS511Connection *conn,
 		" (requestaed %d, got %d)", (int)len, (int)read_size);
     return FALSE;
   }
-  if (!AS511_connection_send_ack(conn, err)) return NULL;
-  if (!AS511_connection_wait_stx(conn, err)) return NULL;
-  if (!read_data(conn, &answer, 1, err)) return NULL;
-  if (!AS511_connection_wait_etx(conn, err)) return NULL;
+  if (!AS511_connection_send_ack(conn, err)) return FALSE;
+  if (!AS511_connection_wait_stx(conn, err)) return FALSE;
+  if (!read_data(conn, &answer, 1, err)) return FALSE;
+  if (!AS511_connection_wait_etx(conn, err)) return FALSE;
+  return TRUE;
+}
+
+
+static guint8 *
+AS511_connection_db_read(AS511Connection *conn, 
+		     guint16 first, guint16 last,
+		     GError **err)
+{
+  guint8 *data;
+  guint8 *p;
+  gsize len = last - first + 1;
+  data =  g_new(guint8, len);
+  p = data;
+  while(len > 0) {
+    gsize read_len;
+    read_len = (len > MAX_MEM_BLOCK_SIZE) ? MAX_MEM_BLOCK_SIZE : len;
+    if (!read_memory_block(conn, first, read_len, p, err)) {
+      g_free(data);
+      return NULL;
+    }
+    first += read_len;
+    p += read_len;
+    len -= read_len;
+  }
   return data;
 }
 
@@ -592,7 +616,7 @@ AS511_connection_db_write(AS511Connection *conn,
   static const guint8 dle_eot[] = {DLE, EOT};
   guint8 buf[2];
   guint8 answer;
-  if (!AS511_connection_send_start(conn, 0x04, &answer, err)) return FALSE;
+  if (!AS511_connection_send_start(conn, 0x03, &answer, err)) return FALSE;
   buf[0] = first>>8;
   buf[1] = first;
   if (!write_data_escaped(conn,buf,2,err)) return FALSE;

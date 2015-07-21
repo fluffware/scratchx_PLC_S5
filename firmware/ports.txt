@@ -1,0 +1,49 @@
+
+P1.3	Red LED
+
+P3.0	RXD0
+P3.1	TXD0
+P3.2	Enable clock to internal I/O
+P3.3	Watch dog interrupt (when there's no pulses on P3.4)
+P3.4	Light green LED for a short while on neg flank, if switch in RUN
+	Watchdog reset?
+P3.6	/WR
+P3.7	/RD
+
+P6.0	0 - Battery lamp on
+P6.1	TX Current loop
+P6.2	RX Current loop
+P8.0	1 - Switch in COPY position
+P8.1	1 - Switch in RUN position
+P8.2	X1 9
+P8.3	1 - Battery power present
+
+External I/O bus
+P1.2	X508 2 In inverted Low(1) if next base present
+P5.2	X508 3 In inverted Data to CPU
+P5.3	X508 5 Out inverted Data from CPU
+P5.4	X508 7 Out inverted Init, low to read configuration
+P5.5	X508 9 Out inverted When low a pos flank on clock loads input shift registers, a neg flank on clock writes registers to outputs
+P5.6	X508 11 Out inverted Clock, data is latched and shifted on pos flank
+P5.7	X508 13 Out inverted Low when running, need watchdog running also.
+
+
+P4.0	0 - DAC load
+P4.1	0 - DAC clock enable
+P4.2	X1 12
+P4.3	X1 11 0 - Enable serial data on internal bus
+P4.4	X1 14
+P4.6-5	High mory mapping
+	11   RAM 1
+	10   Zeros?
+	01   RAM2
+	00   Zeros?
+P4.7	0 - Enable I/O in low memory space (< 0x8000)
+P4
+11011111	0 above 0x8000 (ROM?)
+10111111	RAM above 0x8000
+01111111	I/O below 0x8000
+
+I/O
+0-2000		3f
+2000-4000	RTC 16 bytes

@@ -9,7 +9,7 @@ def skip_prompt(ser):
             break;
         
 ser = serial.Serial(sys.argv[1], 38400, timeout=1)
-ser.write(b"nop\n")
+ser.write(b"\n")
 skip_prompt(ser)
 for line in sys.stdin:
     if line[0] != ':':

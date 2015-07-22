@@ -21,5 +21,8 @@ ext_io_init(void);
 
 extern void
 ext_io_read_config(__xdata struct EIOConfig *conf);
-  
+
+void
+ext_io_read(__xdata struct EIOConfig *conf);
+
 #endif /* __EXT_IO_H__K7CNIE5OVD__ */

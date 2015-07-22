@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <ext_io.h>
+#include <int_io.h>
 #include <rtc.h>
 
 static int a = 7;
@@ -160,8 +161,54 @@ parse_ext_io_cmd(void)
     for (s = 0; s < eio_config.nslots; s++) {
       printf(" %02x", eio_config.slots[s]); 
     }
+  } else if (c == 'r') {
+    uint8_t s;
+    skip_line();
+    if ((P8 & 0x02) == 0) {
+      printf("Set switch to RUN");
+      return;
+    }
+    wd_reset();
+    ext_io_read_config(&eio_config);
+    wd_reset();
+    ext_io_read(&eio_config);
+    for (s = 0; s < eio_config.nslots; s++) {
+      printf(" %02x", eio_config.slots[s]); 
+    }
   }
 }
+
+static void
+parse_int_io_cmd(void)
+{
+  char c;
+  c = peekchar();
+  if (c == '\n' || c=='\r') return; /* Empty line*/
+  c = getchar();
+  if (c == 'w') {
+    uint16_t d;
+    skip_white();
+    d = get_hex();
+    skip_line();
+    if ((P8 & 0x02) == 0) {
+      printf("Set switch to RUN");
+      return;
+    }
+    wd_reset();
+    int_io_write(d);
+  } else if (c == 'r') {
+    uint16_t d;
+    skip_line();
+    if ((P8 & 0x02) == 0) {
+      printf("Set switch to RUN");
+      return;
+    }
+    wd_reset();
+    d = int_io_read();
+    printf("%04x", d);
+  }
+}
+
 __xdata struct RTCTime rtc_time;
 
 static void
@@ -228,6 +275,7 @@ int main()
   char  prev_eol = '\0';
   init_serial_1();
   ext_io_init();
+  int_io_init();
   printf("PLC95 command tool\n>");
   while(1) {
     do {
@@ -344,8 +392,8 @@ int main()
 	parse_ext_io_cmd();
       } else if (c == ':') {
 	parse_rtc_cmd();
-      } else if (c == 'j') {
-	skip_line();
+      } else if (c == '@') {
+	parse_int_io_cmd();
       } else {
 	printf("\nUnknown command");
       }

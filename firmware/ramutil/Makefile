@@ -18,7 +18,7 @@ TEST_OBJ= test.rel
 test.ihx: $(TEST_OBJ)
 	sdcc $(LINK_OPTS) -o $@ $^
 
-CMDTOOL_OBJ= cmdtool.rel ext_io.rel rtc.rel $(CMDTOOL_JMP_OBJ)
+CMDTOOL_OBJ= cmdtool.rel ext_io.rel int_io.rel rtc.rel $(CMDTOOL_JMP_OBJ)
 cmdtool.ihx: $(CMDTOOL_OBJ)
 	sdcc $(LINK_OPTS) -o $@ $^
 

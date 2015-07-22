@@ -2,10 +2,13 @@
 #include <stdint.h>
 #include <ext_io.h>
 
+#define NOP __asm__("nop\n")
+
 #define SHIFT_BIT				\
   rrc a						\
   mov _P5_3,c					\
     setb _P5_6					\
+    nop						\
     mov c,_P5_2					\
     clr _P5_6
 
@@ -33,8 +36,12 @@ static void
 send_latch_in(void)
 {
   EIO_CLOCK = 1;
+  NOP;
   EIO_LOAD = 1;
+  NOP;
+  NOP;
   EIO_CLOCK = 0;
+  NOP;
   EIO_LOAD = 0;
 }
 
@@ -42,8 +49,12 @@ static void
 send_latch_out(void)
 {
   EIO_CLOCK = 0;
+  NOP;
   EIO_LOAD = 1;
+  NOP;
+  NOP;
   EIO_CLOCK = 1;
+  NOP;
   EIO_LOAD = 0;
 }
 
@@ -56,6 +67,7 @@ ext_io_init(void)
   EIO_CLOCK = 0;
   EIO_RUN = 1;
 }
+
 void
 ext_io_read_config(__xdata struct EIOConfig *conf)
 {
@@ -63,10 +75,10 @@ ext_io_read_config(__xdata struct EIOConfig *conf)
   EIO_RUN = 1;
   EIO_RUN = 0;
   EIO_INIT = 1;
-  send_bits(0x10);
+  send_bits(0x01);
   for (n = 3; n < EIO_MAX_BUS_SLOTS; n++) {
     uint8_t d = send_bits(0x00);
-    if (d == 0x10) break;
+    if (d == 0x01) break;
   }
   if (n == EIO_MAX_BUS_SLOTS) {
     conf->nslots = 0;
@@ -75,10 +87,24 @@ ext_io_read_config(__xdata struct EIOConfig *conf)
     conf->nslots = n;
     send_latch_in();
     conf->slots[0] = send_bits(0x15);
-    conf->slots[1] = send_bits(0x08);
+    conf->slots[1] = send_bits(0x02);
     for (l = 2; l < n; l++) {
-       conf->slots[l] = send_bits(0x10);
+       conf->slots[l] = send_bits(0x00);
     }
     EIO_INIT = 0;
+  }
+}
+
+void
+ext_io_read(__xdata struct EIOConfig *conf)
+{
+  uint8_t l;
+  EIO_RUN = 0;
+  EIO_INIT = 0;
+  send_latch_in();
+  conf->slots[0] = send_bits(0x15);
+  conf->slots[1] = send_bits(0x02);
+  for (l = 2; l < conf->nslots; l++) {
+    conf->slots[l] = send_bits(0x10);
   }
 }

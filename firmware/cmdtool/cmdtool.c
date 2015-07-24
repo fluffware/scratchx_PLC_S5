@@ -5,7 +5,31 @@
 #include <int_io.h>
 #include <rtc.h>
 
-static int a = 7;
+#ifdef DEST_ROM
+/* Build jumptable into RAM if compiling for ROM */
+#define ISR(n) void isr_##n(void) __interrupt (n)
+ISR(0);
+ISR(1);
+ISR(2);
+ISR(3);
+ISR(4);
+ISR(5);
+ISR(6);
+ISR(7);
+ISR(8);
+ISR(9);
+ISR(10);
+ISR(11);
+ISR(12);
+ISR(13);
+ISR(14);
+ISR(15);
+ISR(16);
+ISR(17);
+ISR(18);
+ISR(19);
+#endif
+
 #define BPS 38400
 #define F_OSC 14745600
 #define S0REL (1024 - (F_OSC/((long)64*BPS)))

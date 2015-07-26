@@ -1,0 +1,2 @@
+A websocket server that relays commands between ScratchX and the PLC
+over a serial connection.

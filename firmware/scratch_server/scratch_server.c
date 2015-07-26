@@ -99,8 +99,11 @@ static __xdata struct pt parse_pt;
 
 #define SKIP_WHITE while(c == ' ' || c =='\t') PT_YIELD(&parse_pt)
 
+static int_output_state = 0x0000;
+
 PT_THREAD(parse_thread(char c))
 {
+  static uint16_t addr;
   PT_BEGIN(&parse_pt);
   while(1) {
     while(c == '\n' || c=='\r') PT_YIELD(&parse_pt); 
@@ -111,18 +114,38 @@ PT_THREAD(parse_thread(char c))
       PT_SPAWN(&parse_pt, &sub_parse_pt, parse_hex(c));
       SKIP_TO_EOL;
       if (v == 32) {
-	printf("%04x\n", int_io_read());
+	printf("%02x\n", int_io_read() & 0xff);
+      } else if (v == 33) {
+	printf("%02x\n", int_io_read() >> 8);
       }
     } else if (strcmp(token, "dout") == 0) {
-      static uint16_t addr;
+      static uint8_t dout;
       SKIP_WHITE;
       PT_SPAWN(&parse_pt, &sub_parse_pt, parse_hex(c));
       addr = v;
       SKIP_WHITE;
       PT_SPAWN(&parse_pt, &sub_parse_pt, parse_hex(c));
+      dout = v;
+      SKIP_WHITE;
+      v = 0xff; /* Default mask */
+      if (c != '\n' && c != '\r') {
+	PT_SPAWN(&parse_pt, &sub_parse_pt, parse_hex(c));
+      }
       SKIP_TO_EOL;
-      if (addr == 32) {
-	int_io_write(v);
+      if (addr == 32 || addr == 33) {
+	uint8_t r;
+	if (addr == 32) {
+	  int_output_state = (int_output_state & ~v) | (dout & v);
+	} else {
+	  int_output_state = (int_output_state & ~(v<<8)) | ((dout & v)<<8);
+	}
+	int_io_write(int_output_state);
+	if (addr == 32) {
+	  r = int_output_state;
+	} else {
+	  r = int_output_state>>8;
+	}
+	printf("%02x\n", r);
       }
     } else if (strcmp(token, "ain") == 0) {
       SKIP_WHITE;
@@ -133,7 +156,6 @@ PT_THREAD(parse_thread(char c))
 	printf("%04x\n", r);
       }
     } else if (strcmp(token, "aout") == 0) {
-      static uint16_t addr;
       SKIP_WHITE;
       PT_SPAWN(&parse_pt, &sub_parse_pt, parse_hex(c));
       addr = v;

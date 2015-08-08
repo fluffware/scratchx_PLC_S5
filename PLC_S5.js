@@ -115,6 +115,7 @@ function PLC_S5_comm(url)
     
     ext.set_output_bit = function(addr, bit, state)
     {
+	console.log(int(addr),state ? 0xff : 0x00, (1<<int(bit)));
 	io.dout(int(addr),state ? 0xff : 0x00, (1<<int(bit)));
     }
 

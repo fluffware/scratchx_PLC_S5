@@ -4,6 +4,9 @@
 #include <ext_io.h>
 #include <int_io.h>
 #include <rtc.h>
+#include <zmodem.h>
+#include <ihex.h>
+#include <crc.h>
 
 #ifdef DEST_ROM
 /* Build jumptable into RAM if compiling for ROM */
@@ -38,6 +41,8 @@ ISR(19);
 #define TI1_MASK 0x02
 #define RI1_MASK 0x01
 
+#define TICKS_PER_SECOND 150
+
 static char peek_buf = 0;
 char getchar(void)
 {
@@ -52,6 +57,32 @@ char getchar(void)
   }
   return c;
 }
+
+/* Returns -1 on timeout */
+int16_t getchar_timeout(uint16_t ticks)
+{
+  uint8_t c;
+  if (peek_buf) {
+    c = peek_buf;
+    peek_buf = 0;
+    return c;
+  } else {
+    TF0 = 0;
+    while (ticks > 0) {
+      while((S1CON & RI1_MASK) == 0 && !TF0); /* Wait for received data */
+      if ((S1CON & RI1_MASK) != 0) {
+	c = S1BUF;
+	S1CON &= (uint8_t)~RI1_MASK;
+	return c;
+      } else {
+	TF0 = 0;
+	ticks--;
+      }
+    }
+    return -1;
+  }
+}
+
 
 char
 peekchar()
@@ -75,6 +106,14 @@ init_serial_1(void)
   S1CON = 0x92; /* Serial mode B, 8bit async. Enable receiver */
   S1RELH = S1REL>>8;
   S1RELL = S1REL;
+
+  /* Setup timer 0 for timed reads */
+  TMOD = (TMOD & 0xf0) | 0x0; /* Mode 1 150Hz clock */
+  TL0 = 0;
+  TH0 =0;
+  TF0 = 0;
+  ET0 = 0;
+  TR0 = 1;
 }
 
 static uint16_t
@@ -292,7 +331,108 @@ parse_rtc_cmd(void)
   }
 }
 
+uint16_t
+calc_crc(__xdata uint8_t *p, uint16_t l)
+{
+  uint16_t crc = 0xffff;
+  while(l-- > 0) { 
+    uint8_t c = *p++;
+    crc = updcrc(c, crc);
+  }
+  return crc;
+}
+
 typedef (*GenericCall)();
+
+/* Place CRC last in program RAM */
+
+#define FLAG_AUTORUN 0x01
+
+#define MAGIC1 0xfa
+#define MAGIC2 0x50
+
+struct footer_t {
+  uint8_t flags;
+  uint8_t magic1;
+  uint8_t magic2;
+  uint8_t crc_hi;
+  uint8_t crc_lo;
+};
+
+static __xdata __at (0x10000 - sizeof(struct footer_t)) struct footer_t footer;
+static __xdata __at 0x8000 uint8_t prg_ram;
+#define PRG_RAM_SIZE 0x8000
+
+static void
+receive_file(void)
+{
+  ihex_init();
+  zmodem_init();
+  while(zmodem_input(getchar()));
+  if (ihex_parse_error != IHEX_DONE) {
+    /* Consume any extra bytes sent */
+    while(getchar_timeout(TICKS_PER_SECOND*2) >= 0);
+  }
+  printf("\n%02x",ihex_parse_error);
+}
+
+static void
+parse_transfer_cmd(void)
+{
+  char c;
+  c = peekchar();
+  if (c == '\n' || c=='\r') return; /* Empty line*/
+  c = getchar();
+  if (c == 'c') {
+    uint16_t crc;
+    footer.flags = 0;
+    if (peekchar() == '+') {
+      footer.flags += FLAG_AUTORUN;
+      getchar();
+    }
+    skip_line();
+    footer.magic1 = MAGIC1;
+    footer.magic2 = MAGIC2;
+    footer.crc_hi = 0;
+    footer.crc_lo = 0;
+    crc = calc_crc(&prg_ram, PRG_RAM_SIZE);
+    footer.crc_hi = crc >> 8;
+    footer.crc_lo = crc;
+  } else if (c == 'R') {
+    skip_line();
+    if (footer.magic1 == MAGIC1 && footer.magic2 == MAGIC2) {
+      if (calc_crc(&prg_ram, PRG_RAM_SIZE) == 0) {
+	((GenericCall)&prg_ram)();
+      } else {
+	printf("CRC error");
+      }
+    } else {
+      printf("No program footer found");
+    }
+  } else if (c == '?') {
+    skip_line();
+    printf("%02x", ihex_parse_error);
+  }
+}
+void
+zmodem_file_start(void)
+{
+  P1_3 = 0;
+}
+
+void
+zmodem_file_end(void)
+{
+  P1_3 = 1;
+}
+
+void
+zmodem_send(uint8_t c)
+{
+  putchar(c);
+}
+
+
 
 int main()
 {
@@ -300,6 +440,17 @@ int main()
   init_serial_1();
   ext_io_init();
   int_io_init();
+  if ((P8 & 1) == 0) {
+    if (footer.magic1 == MAGIC1 && footer.magic2 == MAGIC2) {
+      if (footer.flags & FLAG_AUTORUN) {
+	if (calc_crc(&prg_ram, PRG_RAM_SIZE) == 0) {
+	  ((GenericCall)&prg_ram)();
+	} else {
+	  printf("Program RAM CRC error\n");
+	}
+      }
+    }
+  }
   printf("PLC95 command tool\n>");
   while(1) {
     do {
@@ -308,6 +459,7 @@ int main()
       if (prev_eol == '\r' && peekchar() == '\n') {
 	getchar();
       }
+      prev_eol = '\0';
       skip_space();
       c = peekchar();
       if (c == '\n' || c=='\r') break; /* Empty line*/
@@ -315,13 +467,18 @@ int main()
       if (c == 'r') {
 	__data uint8_t *p;
 	uint16_t l;
-	p = (__data uint8_t*)get_hex();
-	if (skip_space()) break;
-	l = get_hex();
-	while(l > 0) {
-	  printf(" %02x", *p);
-	  p++;
-	  l--;
+	if (peekchar() == 'z') {
+	  prev_eol = skip_to_eol();
+	  receive_file();
+	} else {
+	  p = (__data uint8_t*)get_hex();
+	  if (skip_space()) break;
+	  l = get_hex();
+	  while(l > 0) {
+	    printf(" %02x", *p);
+	    p++;
+	    l--;
+	  }
 	}
       } else if (c == 'i') {
 	uint8_t p;
@@ -418,11 +575,15 @@ int main()
 	parse_rtc_cmd();
       } else if (c == '@') {
 	parse_int_io_cmd();
+      } else if (c == '%') {
+	parse_transfer_cmd();
       } else {
-	printf("\nUnknown command");
+	printf("\nUnknown command %c", c);
       }
     } while(0);
-    prev_eol = skip_to_eol();
+    if (prev_eol == '\0') {
+      prev_eol = skip_to_eol();
+    }
     putchar('\n');
     putchar('>');
   }

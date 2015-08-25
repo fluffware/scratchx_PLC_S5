@@ -15,11 +15,11 @@ VPATH=../common
 
 MEM_OPTS= --model-small --stack-auto
 
-COMPILE_OPTS=  $(CPU_OPTS) $(MEM_OPTS) -I . -I ../common $(DEST_DEFS)
+COMPILE_OPTS=  $(CPU_OPTS) $(MEM_OPTS) -I . -I ../common -I ../contiki $(DEST_DEFS)
 LINK_OPTS= $(MEM_OPTS)  --code-loc $(CODE_LOC)
 
 
-CMDTOOL_OBJ= cmdtool.rel ext_io.rel int_io.rel rtc.rel $(CMDTOOL_DEST_OBJ)
+CMDTOOL_OBJ= cmdtool.rel ext_io.rel int_io.rel rtc.rel zmodem.rel crc.rel ihex.rel $(CMDTOOL_DEST_OBJ)
 cmdtool.ihx: $(CMDTOOL_OBJ)
 	sdcc $(LINK_OPTS) -o $@ $^
 

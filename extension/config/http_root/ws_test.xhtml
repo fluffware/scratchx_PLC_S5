@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+  <!DOCTYPE html PUBLIC
+	    "-//W3C//DTD XHTML 1.1 plus MathML 2.0 plus SVG 1.1//EN"
+	    "http://www.w3.org/2002/04/xhtml-math-svg/xhtml-math-svg.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+     <link rel="stylesheet" type="text/css" href="ws_test.css"/>
+    <script type="application/javascript" src="jquery_min.js">
+    </script>
+    <script type="application/javascript" src="PLC_S5_comm.js">
+    </script>
+    <script type="application/javascript" src="ws_test.js">
+    </script>
+    <title>Websocket test</title>
+  </head>
+  <body onload="page_onload()" onunload="page_onunload()">
+    <h1>Websocket test</h1>
+    <table>
+      <tr>
+      	<th>Addr</th>
+      	<th>.7</th>
+      	<th>.6</th>
+      	<th>.5</th>
+      	<th>.4</th>
+      	<th>.3</th>
+      	<th>.2</th>
+      	<th>.1</th>
+      	<th>.0</th>
+      </tr>
+      <tr>
+	<td>I32</td>
+	<td>
+	    <div class="din32" show_mask="128">1</div>
+	    <div class="din32" hide_mask="128">0</div>
+	</td>
+	<td>
+	    <div class="din32" show_mask="64">1</div>
+	    <div class="din32" hide_mask="64">0</div>
+	</td>
+	<td>
+	    <div class="din32" show_mask="32">1</div>
+	    <div class="din32" hide_mask="32">0</div>
+	</td>
+	<td>
+	    <div class="din32" show_mask="16">1</div>
+	    <div class="din32" hide_mask="16">0</div>
+	</td>
+	<td>
+	    <div class="din32" show_mask="8">1</div>
+	    <div class="din32" hide_mask="8">0</div>
+	</td>
+	<td>
+	    <div class="din32" show_mask="4">1</div>
+	    <div class="din32" hide_mask="4">0</div>
+	</td>
+	<td>
+	    <div class="din32" show_mask="2">1</div>
+	    <div class="din32" hide_mask="2">0</div>
+	</td>
+	<td>
+	    <div class="din32" show_mask="1">1</div>
+	    <div class="din32" hide_mask="1">0</div>
+	</td>
+      </tr>
+      <tr>
+	<td>I33</td>
+	<td>
+	    <div class="din33" show_mask="128">1</div>
+	    <div class="din33" hide_mask="128">0</div>
+	</td>
+	<td>
+	    <div class="din33" show_mask="64">1</div>
+	    <div class="din33" hide_mask="64">0</div>
+	</td>
+	<td>
+	    <div class="din33" show_mask="32">1</div>
+	    <div class="din33" hide_mask="32">0</div>
+	</td>
+	<td>
+	    <div class="din33" show_mask="16">1</div>
+	    <div class="din33" hide_mask="16">0</div>
+	</td>
+	<td>
+	    <div class="din33" show_mask="8">1</div>
+	    <div class="din33" hide_mask="8">0</div>
+	</td>
+	<td>
+	    <div class="din33" show_mask="4">1</div>
+	    <div class="din33" hide_mask="4">0</div>
+	</td>
+	<td>
+	    <div class="din33" show_mask="2">1</div>
+	    <div class="din33" hide_mask="2">0</div>
+	</td>
+	<td>
+	    <div class="din33" show_mask="1">1</div>
+	    <div class="din33" hide_mask="1">0</div>
+	</td>
+      </tr>
+      <tr>
+	<td>Q32</td>
+	<td onclick="toggleDout(32,128);">
+	    <div class="dout32" show_mask="128">1</div>
+	    <div class="dout32" hide_mask="128">0</div>
+	</td>
+	<td onclick="toggleDout(32,64);">
+	    <div class="dout32" show_mask="64">1</div>
+	    <div class="dout32" hide_mask="64">0</div>
+	</td>
+	<td onclick="toggleDout(32,32);">
+	    <div class="dout32" show_mask="32">1</div>
+	    <div class="dout32" hide_mask="32">0</div>
+	</td>
+	<td onclick="toggleDout(32,16);">
+	    <div class="dout32" show_mask="16">1</div>
+	    <div class="dout32" hide_mask="16">0</div>
+	</td>
+	<td onclick="toggleDout(32,8);">
+	    <div class="dout32" show_mask="8">1</div>
+	    <div class="dout32" hide_mask="8">0</div>
+	</td>
+	<td onclick="toggleDout(32,4);">
+	    <div class="dout32" show_mask="4">1</div>
+	    <div class="dout32" hide_mask="4">0</div>
+	</td>
+	<td onclick="toggleDout(32,2);">
+	    <div class="dout32" show_mask="2">1</div>
+	    <div class="dout32" hide_mask="2">0</div>
+	</td>
+	<td onclick="toggleDout(32,1);">
+	    <div class="dout32" show_mask="1">1</div>
+	    <div class="dout32" hide_mask="1">0</div>
+	</td>
+      </tr>
+      <tr>
+	<td>Q33</td>
+	<td onclick="toggleDout(33,128);">
+	    <div class="dout33" show_mask="128">1</div>
+	    <div class="dout33" hide_mask="128">0</div>
+	</td>
+	<td onclick="toggleDout(33,64);">
+	    <div class="dout33" show_mask="64">1</div>
+	    <div class="dout33" hide_mask="64">0</div>
+	</td>
+	<td onclick="toggleDout(33,32);">
+	    <div class="dout33" show_mask="32">1</div>
+	    <div class="dout33" hide_mask="32">0</div>
+	</td>
+	<td onclick="toggleDout(33,16);">
+	    <div class="dout33" show_mask="16">1</div>
+	    <div class="dout33" hide_mask="16">0</div>
+	</td>
+	<td onclick="toggleDout(33,8);">
+	    <div class="dout33" show_mask="8">1</div>
+	    <div class="dout33" hide_mask="8">0</div>
+	</td>
+	<td onclick="toggleDout(33,4);">
+	    <div class="dout33" show_mask="4">1</div>
+	    <div class="dout33" hide_mask="4">0</div>
+	</td>
+	<td onclick="toggleDout(33,2);">
+	    <div class="dout33" show_mask="2">1</div>
+	    <div class="dout33" hide_mask="2">0</div>
+	</td>
+	<td onclick="toggleDout(33,1);">
+	    <div class="dout33" show_mask="1">1</div>
+	    <div class="dout33" hide_mask="1">0</div>
+	</td>
+      </tr>
+    </table>  
+    <p>AIN 0: <div class="ain0">0</div></p>
+    <p>AIN 1: <div class="ain1">0</div></p>
+    <p>AIN 2: <div class="ain2">0</div></p>
+    <p>AIN 3: <div class="ain3">0</div></p>
+    <p>AIN 4: <div class="ain4">0</div></p>
+    <p>AIN 5: <div class="ain5">0</div></p>
+    <p>AIN 6: <div class="ain6">0</div></p>
+    <p>AIN 7: <div class="ain7">0</div></p>
+    <form action="javascript:void(0);">
+      <fieldset>
+	<legend>Analog out</legend>
+	<input type="text" name="aout0" onchange="aout(0,this.value)" />
+      </fieldset>
+    </form>
+  </body>
+</html>

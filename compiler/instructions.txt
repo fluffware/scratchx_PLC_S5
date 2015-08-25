@@ -1,0 +1,49 @@
+
+<int_index>	Index of signed 16 bit integer
+<string_index>	Index of UTF-8 string (up to 254 bytes long)
+<bool_index>	Index of boolean
+<rel_addr>	Address of an instruction expressed as a byte offset
+		relative to the current instruction.
+		
+ACC0		Integer index 0
+ACC1		Integer index 1
+
+STR0		String index 0
+
+BOOL0		Boolean index 0
+
+Load/store
+LDI	<int_index>		ACC0 = <int_index>
+STI	<int_index>		<int_index> = ACC0
+
+LDB	<bool_index>		BOOL0 = <bool_index>
+STB	<bool_index>		<bool_index> = BOOL0
+
+LDS	<string_index>		STR0 = <string_index>
+STS	<string_index>		<string_index> = STR0
+
+Arithmetic instructions result stored in ACC0
+ADD	<int_index>		ACC0 = ACC0 + <int_index>
+SUB	<int_index>		ACC0 = ACC0 - <int_index>
+MUL	<int_index>		ACC0 = ACC0 * <int_index>
+DIV	<int_index>		ACC0 = ACC0 / <int_index>, ACC1 = ACC0 % <int_index>
+
+Comparison
+GT	<int_index>		BOOL0 = <int_index> > ACC0
+LT	<int_index>		BOOL0 = <int_index> < ACC0
+EQ	<int_index>		BOOL0 = <int_index> == ACC0
+NE	<int_index>		BOOL0 = <int_index> != ACC0
+
+Boolean operations
+AND	<bool_index>		BOOL0 = <bool_index> && ACC0
+OR	<bool_index>		BOOL0 = <bool_index> || ACC0
+OR	<bool_index>		BOOL0 = !<bool_index>
+
+Branching instructions
+JMP	<rel_addr>		Jump to the new address
+JPT	<rel_addr>		Jump if BOOL0 is true
+JPF	<rel_addr>		Jump if BOOL0 is FALSE
+
+WAIT	<int_index>		Wait for <int_index> / 10 seconds
+
+YIELD				Let other blocks run

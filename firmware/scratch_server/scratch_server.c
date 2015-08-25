@@ -21,6 +21,23 @@ timer0_isr(void) __interrupt(1)
 static void
 serial1_isr(void) __interrupt(16);
 
+static __code const char hex_digits[16] = 
+  {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
+
+static void
+print_hex8(uint8_t v)
+ {
+  putchar(hex_digits[v>>4]);
+  putchar(hex_digits[v&0x0f]);
+}
+
+static void
+print_hex16(uint16_t v) 
+{
+  print_hex8(v>>8);
+  print_hex8(v);
+}
+
 static void
 timer_init(void)
 {
@@ -99,7 +116,9 @@ static __xdata struct pt parse_pt;
 
 #define SKIP_WHITE while(c == ' ' || c =='\t') PT_YIELD(&parse_pt)
 
-static int_output_state = 0x0000;
+static __xdata uint16_t int_output_state = 0x0000;
+
+static __xdata uint16_t int_aout0_state = 0;
 
 PT_THREAD(parse_thread(char c))
 {
@@ -114,9 +133,11 @@ PT_THREAD(parse_thread(char c))
       PT_SPAWN(&parse_pt, &sub_parse_pt, parse_hex(c));
       SKIP_TO_EOL;
       if (v == 32) {
-	printf("%02x\n", int_io_read() & 0xff);
+	print_hex8(int_io_read() & 0xff);
+	putchar('\n');
       } else if (v == 33) {
-	printf("%02x\n", int_io_read() >> 8);
+	print_hex8( int_io_read() >> 8);
+	putchar('\n');
       }
     } else if (strcmp(token, "dout") == 0) {
       static uint8_t dout;
@@ -145,7 +166,8 @@ PT_THREAD(parse_thread(char c))
 	} else {
 	  r = int_output_state>>8;
 	}
-	printf("%02x\n", r);
+	print_hex8(r);
+	putchar('\n');
       }
     } else if (strcmp(token, "ain") == 0) {
       SKIP_WHITE;
@@ -153,21 +175,39 @@ PT_THREAD(parse_thread(char c))
       SKIP_TO_EOL;
       if (v < 8) {
 	int16_t r = adc_get(v);
-	printf("%04x\n", r);
+	print_hex16(r);
+	putchar('\n');
       }
     } else if (strcmp(token, "aout") == 0) {
       SKIP_WHITE;
       PT_SPAWN(&parse_pt, &sub_parse_pt, parse_hex(c));
       addr = v;
       SKIP_WHITE;
+      if (c == '\n' || c == '\r') {
+	if (addr == 0) {
+	  print_hex16(int_aout0_state);
+	  putchar('\n');
+	}
+      } else {
+	PT_SPAWN(&parse_pt, &sub_parse_pt, parse_hex(c));
+	SKIP_TO_EOL;
+	if (addr == 0) {
+	  dac_set(v);
+	  int_aout0_state = v;
+	  print_hex16(v);
+	  putchar('\n');
+	}
+      }
+    } else if (strcmp(token, "echo") == 0) {
+      SKIP_WHITE;
       PT_SPAWN(&parse_pt, &sub_parse_pt, parse_hex(c));
       SKIP_TO_EOL;
-      if (addr == 0) {
-	dac_set(v);
-      }
+      print_hex16(v);
+      putchar('\n');
     } else {
       SKIP_TO_EOL;
-      printf("?\n");
+      putchar('?');
+      putchar('\n');
     }
     PT_YIELD(&parse_pt);
   }

@@ -190,6 +190,10 @@ build_command(const struct CmdRequest *req)
     return g_strdup_printf("dout %x %x %x", req->addr, req->value, req->mask);
   } else if (strcmp(req->cmd, "din") == 0) {
      return g_strdup_printf("din %x", req->addr);
+  } else if (strcmp(req->cmd, "ain") == 0) {
+     return g_strdup_printf("ain %x", req->addr);
+  } else if (strcmp(req->cmd, "aout") == 0) {
+    return g_strdup_printf("aout %x %x", req->addr, req->value);
   }
   return NULL;
 }
@@ -356,11 +360,11 @@ plc_io_callback(struct libwebsocket_context *context,
       struct CmdRequest *req;
       while((req = cmd_request_get(server, wsi))) {
 	GString *reply = g_string_new_len(padding, LWS_SEND_BUFFER_PRE_PADDING);
-	g_string_append_printf(reply, "{cmd:\"%s\",", req->cmd);
-	g_string_append_printf(reply, "addr:%d,", req->addr);
-	g_string_append_printf(reply, "mask:%d,", req->mask);
-	g_string_append_printf(reply, "value:%d,", req->value);
-	g_string_append_printf(reply, "reply:%d}", req->reply);
+	g_string_append_printf(reply, "{\"cmd\":\"%s\",", req->cmd);
+	g_string_append_printf(reply, "\"addr\":%d,", req->addr);
+	g_string_append_printf(reply, "\"mask\":%d,", req->mask);
+	g_string_append_printf(reply, "\"value\":%d,", req->value);
+	g_string_append_printf(reply, "\"reply\":%d}", req->reply);
 	g_string_append_len(reply, padding, LWS_SEND_BUFFER_POST_PADDING);
 	libwebsocket_write(wsi,((unsigned char*)reply->str 
 				+ LWS_SEND_BUFFER_PRE_PADDING),

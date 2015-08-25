@@ -355,6 +355,7 @@ static struct
     {"ico", "image/x-icon"},
      {"png", "image/png"},
     {"html", "text/html"},
+    {"css", "text/css"},
     {"xhtml", "application/xhtml+xml"},
     {"js", "application/x-javascript"}
   };

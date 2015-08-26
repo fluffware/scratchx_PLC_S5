@@ -259,7 +259,6 @@ serial_read_thread(gpointer data)
 	}
       } 
       g_mutex_unlock(&comm->mutex);
-      g_usleep(100000); 
     }
   }
   return NULL;

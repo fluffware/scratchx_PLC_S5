@@ -16,11 +16,11 @@
 typedef struct _PlcIoComm PlcIoComm;
 typedef struct _PlcIoCommClass PlcIoCommClass;
 
-typedef struct _PLCCmd PLCCmd;
-struct _PLCCmd
+typedef struct _PLCMsg PLCMsg;
+struct _PLCMsg
 {
-  gchar *cmd;
-  gchar *reply;
+  GError *err;
+  guint8 *msg;
 };
 
 GType
@@ -29,5 +29,6 @@ plc_io_comm_get_type(void);
 PlcIoComm *
 plc_io_comm_new(GIOStream *io, GError **err);
 
+/* Calculates CRC for cmd before sending */
 gboolean
-plc_io_comm_send(PlcIoComm *comm,  const gchar *cmd, GError **err);
+plc_io_comm_send(PlcIoComm *comm,  const guint8 *cmd, GError **err);

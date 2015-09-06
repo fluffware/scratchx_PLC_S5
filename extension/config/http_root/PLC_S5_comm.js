@@ -16,13 +16,13 @@ function PLC_S5_comm(url)
 	    var res = JSON.parse(event.data);
 	    switch(res.cmd) {
 	    case "din":
-		self.onDin(res.addr, res.reply);
+		self.onDin(res.addr, res.value);
 		break;
 	    case "dout":
-		self.onDout(res.addr, res.reply);
+		self.onDout(res.addr, res.value);
 		break;
 	    case "ain":
-		self.onAin(res.addr, res.reply);
+		self.onAin(res.addr, res.value);
 		break;
 	    }
 	}

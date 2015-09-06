@@ -1,6 +1,7 @@
 #include "PLC_IO_server.h"
 #include <websocket_server_private.h>
 #include <json-glib/json-glib.h>
+#include <plc_protocol.h>
 
 GQuark
 plc_io_server_error_quark()
@@ -27,10 +28,9 @@ enum
 struct _PlcIoServer
 {
   WebsocketServer parent_instance;
+  const struct libwebsocket_protocols *protocol;
   PlcIoComm *comm;
-  GQueue *requests;
-  GQueue *replies;
-  struct CmdRequest *pending_request; /* The command being executed */
+  struct QueueHead *replies;
   JsonParser *json;
 };
 
@@ -46,28 +46,12 @@ struct _PlcIoServerClass
 
 G_DEFINE_TYPE (PlcIoServer, plc_io_server, WEBSOCKET_SERVER_TYPE)
 
-struct CmdRequest;
-
-static void
-cmd_request_free(struct CmdRequest *);
 
 static void
 dispose(GObject *gobj)
 {
   PlcIoServer *server = PLC_IO_SERVER(gobj);
-  if (server->requests) {
-    g_queue_free_full(server->requests,  (GDestroyNotify)cmd_request_free);
-    server->requests = NULL;
-  }
-  if (server->replies) {
-    g_queue_free_full(server->replies,  (GDestroyNotify)cmd_request_free);
-    server->replies = NULL;
-  }
   g_clear_object(&server->comm);
-  if (server->pending_request) {
-    cmd_request_free(server->pending_request);
-    server->pending_request = NULL;
-  }
   g_clear_object(&server->json);
   G_OBJECT_CLASS(plc_io_server_parent_class)->dispose(gobj);
 }
@@ -113,9 +97,14 @@ plc_io_callback(struct libwebsocket_context *context,
 		void *user,
 		void *in, size_t len);
 
+struct SessionData
+{
+  struct QueueHead *replies;
+};
+
 static const struct libwebsocket_protocols protocols[] = 
 {
-  {"PLC_IO", plc_io_callback, 0, 100, .owning_server = NULL, .protocol_index = 0},
+  {"PLC_IO", plc_io_callback, sizeof(struct SessionData), 100, .owning_server = NULL, .protocol_index = 0},
 };
 
 static guint
@@ -147,13 +136,13 @@ plc_io_server_class_init (PlcIoServerClass *klass)
 static void
 plc_io_server_init(PlcIoServer *server)
 {
-  server->requests = g_queue_new();
-  server->replies = g_queue_new();
+  server->replies = NULL;
   server->json = json_parser_new();
+  server->protocol = NULL;
 }
 
 static void
-reply_handler(PlcIoComm *comm, PLCCmd *cmd, PlcIoServer *server);
+reply_handler(PlcIoComm *comm, PLCMsg *msg, PlcIoServer *server);
 
 PlcIoServer *
 plc_io_server_new(PlcIoComm *comm)
@@ -166,84 +155,92 @@ plc_io_server_new(PlcIoComm *comm)
   return server;
 }
 
-struct CmdRequest
+struct MsgQueue
 {
-  struct libwebsocket *wsi;
-  char *cmd;
-  guint16 addr;
-  guint16 mask;
-  guint16 value;
-  guint16 reply;
+  struct MsgQueue *next;
+   guint8 *msg;
 };
 
+struct QueueHead
+{
+  struct QueueHead *next;
+  struct QueueHead **prevp;
+  struct MsgQueue **in;
+  struct MsgQueue *out;
+};
+
+static struct QueueHead *
+msg_queue_head_add(struct QueueHead **list)
+{
+  struct QueueHead *head = g_new(struct QueueHead, 1);
+  head->next = *list;
+  head->prevp = list;
+  head->in = &head->out;
+  head->out = NULL;
+  *list = head;
+  return head;
+}
+
 static void
-cmd_request_free(struct CmdRequest *req)
+msg_queue_head_remove(struct QueueHead *head)
 {
-  g_free(req->cmd);
-  g_free(req);
-}
-
-static char *
-build_command(const struct CmdRequest *req)
-{
-  if (strcmp(req->cmd, "dout") == 0) {
-    return g_strdup_printf("dout %x %x %x", req->addr, req->value, req->mask);
-  } else if (strcmp(req->cmd, "din") == 0) {
-     return g_strdup_printf("din %x", req->addr);
-  } else if (strcmp(req->cmd, "ain") == 0) {
-     return g_strdup_printf("ain %x", req->addr);
-  } else if (strcmp(req->cmd, "aout") == 0) {
-    return g_strdup_printf("aout %x %x", req->addr, req->value);
-  }
-  return NULL;
-}
-
-void
-parse_reply(const char *reply, struct CmdRequest *req)
-{
-  char *end;
-  if (reply) {
-    long v = strtoul(reply, &end, 16);
-    if (reply != end) {
-      req->reply = v;
-    }
-  } else {
-    req->reply = 0;
+  struct MsgQueue *mq;
+  *head->prevp = head->next;
+  mq = head->out;
+  while(mq) {
+    struct MsgQueue *next = mq->next;
+    g_free(mq->msg);
+    g_free(mq);
+    mq = next;
   }
 }
 
 static void
-try_send(PlcIoServer *server)
+msg_queue_push(struct QueueHead *list, const guint8 *msg)
 {
-  if (!server->pending_request) {
-    struct CmdRequest *req = g_queue_pop_head(server->requests);
-    if (req) {
-      char *cmd;
-      g_debug("Request: %s",req->cmd);
-      cmd = build_command(req);
-      if (cmd) {
-	plc_io_comm_send(server->comm, cmd, NULL);
-	g_free(cmd);
-	server->pending_request = req;
-      } else {
-	cmd_request_free(req);
-      }
-    }
+  int len = msg[0] >>6;
+  if (len == 3) len = msg[1] + 1;
+  len += 2;
+  if (!list) return;
+  while(list) {
+    struct MsgQueue *mq = g_new(struct MsgQueue, 1);
+    mq->msg = g_new(guint8, len);
+    memcpy(mq->msg, msg, len);
+    mq->next = NULL;
+    *list->in = mq;
+    list->in = &mq->next;
+    list = list->next;
   }
 }
 
+static guint8 *
+msg_queue_pop(struct QueueHead *q)
+{
+  guint8 *msg;
+  struct MsgQueue *mq;
+  if (!q->out) return NULL;
+  mq = q->out;
+  msg = mq->msg;
+  q->out = mq->next;
+  if (!q->out) q->in = &q->out;
+  g_free(mq);
+  return msg;
+}
+
 static void
-reply_handler(PlcIoComm *comm, PLCCmd *cmd, PlcIoServer *server)
+reply_handler(PlcIoComm *comm, PLCMsg *msg, PlcIoServer *server)
 {
   g_debug("reply_handler");
-  if (server->pending_request) {
-    parse_reply(cmd->reply, server->pending_request);
-    g_queue_push_tail(server->replies, server->pending_request);
-    libwebsocket_callback_on_writable(WEBSOCKET_SERVER(server)->ws_context,
-				      server->pending_request->wsi);
-    server->pending_request = NULL;
-  }
-  try_send(server);
+  if (!server->protocol) return;
+  msg_queue_push(server->replies, msg->msg);
+
+  libwebsocket_callback_on_writable_all_protocol(server->protocol);
+}
+
+static void
+send_cmd(PlcIoServer *server, guint8 *cmd)
+{
+  plc_io_comm_send(server->comm, cmd, NULL);
 }
 
 static void
@@ -253,37 +250,63 @@ cmd_request_send(PlcIoServer *server,
 {
   GError *err = NULL;
   if (json_parser_load_from_data(server->json, cmd, len, &err)) {
+    const gchar *cmd;
+    guint8 addr;
+    guint16 value;
+    guint16 mask;
     JsonNode *value_node;
     JsonNode *root = json_parser_get_root (server->json);
     if (JSON_NODE_HOLDS_OBJECT(root)) {
-      struct CmdRequest *req = g_new(struct CmdRequest, 1);
       JsonObject *root_obj = json_node_get_object(root);
       value_node = json_object_get_member(root_obj, "cmd");
       if (value_node && JSON_NODE_HOLDS_VALUE(value_node)) {
-	req->cmd = json_node_dup_string(value_node);
+	cmd = json_node_dup_string(value_node);
       } else {
-	g_free(req);
 	return;
       }
-      req->addr = 0;
+      addr = 0;
       value_node = json_object_get_member(root_obj, "addr");
       if (value_node && JSON_NODE_HOLDS_VALUE(value_node)) {
-	req->addr = json_node_get_int(value_node);
+	addr = json_node_get_int(value_node);
       }
-      req->value = 0;
+      value = 0;
       value_node = json_object_get_member(root_obj, "value");
       if (value_node && JSON_NODE_HOLDS_VALUE(value_node)) {
-	req->value = json_node_get_int(value_node);
+	value = json_node_get_int(value_node);
       }
-      req->mask = 0xffff;
+      mask = 0xffff;
       value_node = json_object_get_member(root_obj, "mask");
       if (value_node && JSON_NODE_HOLDS_VALUE(value_node)) {
-	req->mask = json_node_get_int(value_node);
+	mask = json_node_get_int(value_node);
       }
-      req->wsi = wsi;
-      
-      g_queue_push_tail(server->requests, req);
-      try_send(server);
+
+      if (strcmp(cmd, "din") == 0) {
+	guint8 cmd[2];
+	cmd[0] = PLC_CMD_READ_DIGITAL_INPUT;
+	cmd[1] = addr;
+	send_cmd(server, cmd);
+      } else if (strcmp(cmd, "dout") == 0) {
+	guint8 cmd[2];
+	cmd[0] = PLC_CMD_WRITE_DIGITAL_OUTPUT;
+	cmd[1] = 3;
+	cmd[2] = addr;
+	cmd[3] = value & mask;
+	cmd[4] = mask;
+	send_cmd(server, cmd);
+      } else if (strcmp(cmd, "ain") == 0) {
+	guint8 cmd[2];
+	cmd[0] = PLC_CMD_READ_ANALOG_INPUT;
+	cmd[1] = addr;
+	send_cmd(server, cmd);
+      } else if (strcmp(cmd, "aout") == 0) {
+	guint8 cmd[2];
+	cmd[0] = PLC_CMD_WRITE_ANALOG_OUTPUT;
+	cmd[1] = 3;
+	cmd[2] = addr;
+	cmd[3] = value;
+	cmd[4] = value>>8;
+	send_cmd(server, cmd);
+      }
     }
   } else {
     g_warning("Failed to parse JSON request: %s", err->message);
@@ -291,22 +314,6 @@ cmd_request_send(PlcIoServer *server,
   }
 }
 
-static gint
-request_wsi_compare(gconstpointer a, gconstpointer b)
-{
-  return (char*)((struct CmdRequest*)a)->wsi - (char*)b;
-}
-static struct CmdRequest *
-cmd_request_get(PlcIoServer *server,
-		struct libwebsocket *wsi)
-{
-  struct CmdRequest *req;
-  GList *li = g_queue_find_custom(server->replies, wsi, request_wsi_compare);
-  if (!li) return NULL;
-  req = li->data;
-  g_queue_delete_link(server->replies, li);
-  return req;
-}
 
 static const gchar padding[MAX(LWS_SEND_BUFFER_POST_PADDING,
 			       LWS_SEND_BUFFER_PRE_PADDING)];
@@ -318,53 +325,58 @@ plc_io_callback(struct libwebsocket_context *context,
 		void *user,
 		void *in, size_t len)
 {
+  struct SessionData *session = user;
   PlcIoServer *server = libwebsocket_context_user (context);
   switch(reason) {
+  case LWS_CALLBACK_PROTOCOL_INIT:
+    break;
   case LWS_CALLBACK_ESTABLISHED:
     g_debug("PLC_IO established");
+    server->protocol = libwebsockets_get_protocol(wsi);
+    session->replies = msg_queue_head_add(&server->replies);
     break;
   case LWS_CALLBACK_CLOSED:
     {
-      struct CmdRequest *req;
-      if (server->requests) {
-	/* Discard all pending requests for this connection */
-	while(TRUE) {
-	  GList *li =
-	    g_queue_find_custom(server->requests, wsi, request_wsi_compare);
-	  if (!li) break;;
-	  req = li->data;
-	  cmd_request_free(req);
-	  g_queue_delete_link(server->requests, li);
-	}
-      }
-      
-      if (server->replies) {
-	/* Discard all pending replies */
-	while((req = cmd_request_get(server, wsi))) {
-	  cmd_request_free(req);
-	}
-      }
-      if (server->pending_request && server->pending_request->wsi == wsi) {
-	cmd_request_free(server->pending_request);
-	server->pending_request = NULL;
-      }
-      g_debug("PLC_IO closed");
+      msg_queue_head_remove(session->replies);
     }
     break;
   case LWS_CALLBACK_PROTOCOL_DESTROY:
+    server->protocol = NULL;
     g_debug("PLC_IO protocol destroy");
     break;
     
   case  LWS_CALLBACK_SERVER_WRITEABLE:
     {
-      struct CmdRequest *req;
-      while((req = cmd_request_get(server, wsi))) {
+      guint8 *msg;
+      
+      while((msg = msg_queue_pop(session->replies))) {
+	gchar *cmd;
+	gint addr = -1;
+	gint value = -1;
+	switch(msg[0]) {
+	case PLC_REPLY_DIGITAL_INPUT:
+	  cmd = "din";
+	  addr = msg[1];
+	  value = msg[2];
+	  break;
+	case PLC_REPLY_DIGITAL_OUTPUT:
+	  cmd = "dout";
+	  addr = msg[1];
+	  value = msg[2];
+	  break;
+	default:
+	  cmd = "error";
+	}
+
 	GString *reply = g_string_new_len(padding, LWS_SEND_BUFFER_PRE_PADDING);
-	g_string_append_printf(reply, "{\"cmd\":\"%s\",", req->cmd);
-	g_string_append_printf(reply, "\"addr\":%d,", req->addr);
-	g_string_append_printf(reply, "\"mask\":%d,", req->mask);
-	g_string_append_printf(reply, "\"value\":%d,", req->value);
-	g_string_append_printf(reply, "\"reply\":%d}", req->reply);
+	g_string_append_printf(reply, "{");
+	if (addr >= 0) {
+	  g_string_append_printf(reply, "\"addr\":%d,", addr);
+	}
+	if (value >= 0) {
+	  g_string_append_printf(reply, "\"value\":%d,", value);
+	}
+	g_string_append_printf(reply, "\"cmd\":\"%s\"}", cmd);
 	g_string_append_len(reply, padding, LWS_SEND_BUFFER_POST_PADDING);
 	libwebsocket_write(wsi,((unsigned char*)reply->str 
 				+ LWS_SEND_BUFFER_PRE_PADDING),
@@ -372,7 +384,8 @@ plc_io_callback(struct libwebsocket_context *context,
 			    - LWS_SEND_BUFFER_POST_PADDING),
 			   LWS_WRITE_TEXT);
 	g_string_free(reply, TRUE);
-	cmd_request_free(req);
+	
+	g_free(msg);
       }
     }
     break;

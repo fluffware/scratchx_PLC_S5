@@ -28,7 +28,6 @@ function din_poll()
 {
     io.din(32);
     io.din(33);
-    din_timer = setTimeout(din_poll, 500);
 }
 
 var ain_pollno = 0;
@@ -45,7 +44,6 @@ function dout_poll()
 {
     io.dout(32, 0, 0);
     io.dout(33, 0, 0);
-    dout_timer = setTimeout(dout_poll, 1900);
 }
 
 function page_onunload()

@@ -15,11 +15,11 @@ VPATH=../common
 
 MEM_OPTS= --model-small --stack-auto
 
-COMPILE_OPTS=  $(CPU_OPTS) $(MEM_OPTS) -I . -I ../common -I ../contiki $(DEST_DEFS)
+COMPILE_OPTS=  $(CPU_OPTS) $(MEM_OPTS) -I . -I ../common -I ../contiki -I ../../include $(DEST_DEFS)
 LINK_OPTS= $(MEM_OPTS)  --code-loc $(CODE_LOC)
 
 
-SCRATCH_SERVER_OBJ= scratch_server.rel ext_io.rel int_io.rel rtc.rel serial.rel adc.rel dac.rel $(SCRATCH_SERVER_DEST_OBJ)
+SCRATCH_SERVER_OBJ= scratch_server.rel ext_io.rel int_io.rel rtc.rel serial.rel adc.rel dac.rel crc8.rel $(SCRATCH_SERVER_DEST_OBJ)
 scratch_server.ihx: $(SCRATCH_SERVER_OBJ)
 	sdcc $(LINK_OPTS) -o $@ $^
 

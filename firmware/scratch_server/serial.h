@@ -10,4 +10,7 @@ putchar(char c);
 
 char
 getchar(void);
+  
+int16_t
+getbyte(void);
 #endif /* __SERIAL_H__7JDAL0X350__ */

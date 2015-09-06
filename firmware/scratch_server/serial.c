@@ -21,24 +21,32 @@ static __xdata uint8_t tx_head = 0;
 static __xdata uint8_t tx_tail = 0;
 static __xdata uint8_t tx_buffer[256];
 
+static void
+clear_S1CON(uint8_t mask) __naked
+{
+  (void) mask;
+  __asm__("mov a, dpl;\nanl _S1CON, a;");
+}
+
 void
 serial1_isr(void) __interrupt(16)
 {
+  
   if (S1CON & TI1_MASK) {
+    clear_S1CON(~TI1_MASK);
     if (tx_head != tx_tail) {
       tx_tail++;
       if (tx_head != tx_tail) {
 	S1BUF = tx_buffer[tx_tail];
       }
     }
-    S1CON &= ~TI1_MASK;
   }
   if (S1CON & RI1_MASK) {
     if (rx_head + 1 != rx_tail) {
       rx_buffer[rx_head] = S1BUF;
       rx_head++;
     }
-    S1CON &= ~RI1_MASK;
+    clear_S1CON(~RI1_MASK);
   }
 }
 
@@ -64,6 +72,16 @@ getchar(void)
   }
 }
 
+int16_t
+getbyte(void)
+{
+  if (rx_head != rx_tail) {
+    return rx_buffer[rx_tail++];
+  } else {
+    return -1;
+  }
+}
+
 void
 init_serial_1(void)
 {
@@ -72,4 +90,6 @@ init_serial_1(void)
   S1RELL = S1REL;
   S1CON &= ~(TI1_MASK | RI1_MASK);
   IEN2 |= ES1_MASK;
+
+  
 }

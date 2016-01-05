@@ -69,7 +69,7 @@ function PLC_S5_comm(url)
     }
 
     this.connected = function() {
-	return ws != undefined;
+	return ws != undefined && ws.readyState == WebSocket.OPEN;
     }
     
     this.dout = function(addr, bits, mask)
@@ -104,10 +104,21 @@ function PLC_S5_comm(url)
     // Connect to I/O server
     var  io = new PLC_S5_comm('ws://localhost:28280');
     var dinValues = {};
-
+    var dinOld = [];
+    var ainCallbacks = {}
+    
     io.onDin = function(addr, reply)
     {
 	dinValues[addr] = reply;
+    }
+
+    io.onAin = function(addr, reply)
+    {
+	if (ainCallbacks[addr] != undefined) {
+	    // Calla all callbacks for this address
+	    ainCallbacks[addr].forEach(function(c) {c(reply/1000);});
+	    ainCallbacks[addr] = []; // We're done
+	}
     }
     
     // Cleanup function when the extension is unloaded
@@ -137,17 +148,48 @@ function PLC_S5_comm(url)
     ext.get_input = function(addr)
     {
 	var value = dinValues[addr];
-	if (value == undefined) return 0;
+	if (value == undefined) {
+	    io.din(addr);
+	    return 0;
+	}
 	return value;
     }
     
     ext.get_input_bit = function(addr, bit)
     {
 	var value = dinValues[addr];
-	if (value == undefined) return 0;
+	if (value == undefined) {
+	    io.din(addr);
+	    return 0;
+	}
 	return (value & (1 << bit)) != 0; 
     }
 
+    ext.get_analog_input = function(addr,callback)
+    {
+	io.ain(addr);
+	if (ainCallbacks[addr] == undefined) {
+	    ainCallbacks[addr] = [];
+	}
+	ainCallbacks[addr].push(callback);
+	return value;
+    }
+    
+    ext.input_changed = function(addr)
+    {
+	var value = dinValues[addr];
+	if (value == undefined) return false;
+	var old = dinOld[addr];
+	dinOld[addr] = value;
+	if (old == undefined) return true;
+	return value != old;
+    }
+
+     ext.set_analog_output = function(addr, value)
+    {
+	io.aout(Math.floor(addr), value);
+    }
+    
     // Block and block menu descriptions
     var descriptor = {
         blocks: [
@@ -155,6 +197,9 @@ function PLC_S5_comm(url)
 	    [' ', 'set output %n bit %n to %n', 'set_output_bit',32,0,0],
 	    ['r', 'input %n', 'get_input', 32],
 	    ['b', 'input %n bit %n is on ?', 'get_input_bit', 32,0],
+	    ['R', 'analog input %n', 'get_analog_input', 0],
+	    ['h', 'when input %n change', 'input_changed', 32],
+	    [' ', 'set analog output %n to %n', 'set_analog_output', 0, 0],
         ]
     };
     // Register the extension

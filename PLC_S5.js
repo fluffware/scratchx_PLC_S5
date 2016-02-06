@@ -214,6 +214,10 @@ function calculate_crc8(bytes)
    
     // Cleanup function when the extension is unloaded
     ext._shutdown = function() {
+	if (discoverTimeout != null) {
+	    clearTimeout(discoverTimeout);
+	    discoverTimeout = null;
+	}
 	if (device) {
 	    device.close();
 	    device = null;
@@ -274,6 +278,10 @@ function calculate_crc8(bytes)
 	} else {
 	    console.log("Failed to open device");
 	    device = null;
+	    if (discoverTimeout != null) {
+		clearTimeout(discoverTimeout);
+		discoverTimeout = null;
+	    }
 	    tryNextDevice();
 	}
     }
@@ -288,8 +296,8 @@ function calculate_crc8(bytes)
 	    var addr = reply[2];
 	    var value = reply[3] | (reply[4] << 8);
 	    if (ainCallbacks[addr] != undefined) {
-		// Calla all callbacks for this address
-		    ainCallbacks[addr].forEach(function(c) {c(value/1000);});
+		// Call all callbacks for this address
+		ainCallbacks[addr].forEach(function(c) {c(value/1000);});
 		ainCallbacks[addr] = []; // We're done
 	    }
 	    break;

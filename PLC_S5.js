@@ -256,7 +256,7 @@ function calculate_crc8(bytes)
 	    devIndex = 0;
 	}
 	device = potentialDevices[devIndex];
-	console.log("Trying device ", device);
+	console.log("Trying device ", device.id);
 	device.open({bitRate:38400, ctsFlowControl:0, dataBits:8, parityBit:0, stopBits:0},
 		    deviceOpened);
 	discoverTimeout = setTimeout(discoverTimedout, 2000);

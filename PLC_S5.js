@@ -277,7 +277,7 @@ function calculate_crc8(bytes)
 	    console.log("Device opened");
 	    device.set_receive_handler(receiveHandler);
 	    replyBuffer = [];
-	    setTimeout(startPoll, 100);
+	    setTimeout(startPoll, 500);
 	   
 	} else {
 	    console.log("Failed to open device");

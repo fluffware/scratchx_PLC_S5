@@ -261,7 +261,7 @@ function calculate_crc8(bytes)
 	    devIndex = 0;
 	}
 	device = potentialDevices[devIndex];
-	device.open({bitRate:38400, ctsFlowControl:0, dataBits:8, parityBit:0, stopBits:0},
+	device.open({bitRate:38400, ctsFlowControl:0, stopBits:0},
 		    deviceOpened);
 	console.log("Trying device ", device.id);
 	discoverTimeout = setTimeout(discoverTimedout, 2000);
@@ -290,7 +290,7 @@ function calculate_crc8(bytes)
     
     function startPoll()
     {
-	//sendRequest([PLC_CMD_READ_DIGITAL_INPUT, 32]); 
+	sendRequest([PLC_CMD_READ_DIGITAL_INPUT, 32]); 
 	//sendRequest([PLC_CMD_READ_DIGITAL_INPUT, 33]);
     }
     

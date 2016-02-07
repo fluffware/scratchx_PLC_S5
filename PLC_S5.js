@@ -275,7 +275,8 @@ function calculate_crc8(bytes)
 	    console.log("Device opened");
 	    device.set_receive_handler(receiveHandler);
 	    replyBuffer = [];
-	    sendRequest([PLC_CMD_READ_DIGITAL_INPUT, 32]);
+	    setTimeout(startPoll, 100);
+	   
 	} else {
 	    console.log("Failed to open device");
 	    device = null;
@@ -286,7 +287,13 @@ function calculate_crc8(bytes)
 	    tryNextDevice();
 	}
     }
-
+    
+    function startPoll()
+    {
+	//sendRequest([PLC_CMD_READ_DIGITAL_INPUT, 32]); 
+	//sendRequest([PLC_CMD_READ_DIGITAL_INPUT, 33]);
+    }
+    
     function processReply(reply)
     {
 	switch(reply[0]) {

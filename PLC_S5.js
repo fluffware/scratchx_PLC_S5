@@ -205,7 +205,7 @@ function calculate_crc8(bytes)
     var ainCallbacks = {}
 
     function sendRequest(req) {
-
+	console.log("Send request: "+req);
 	var crc = calculate_crc8(req);
 	bytes = new Uint8Array(req.concat([crc]));
 	device.send(bytes);

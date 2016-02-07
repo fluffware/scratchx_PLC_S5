@@ -219,6 +219,7 @@ function calculate_crc8(bytes)
 	    discoverTimeout = null;
 	}
 	if (device) {
+	    device.set_receive_handler(null);
 	    device.close();
 	    device = null;
 	}
@@ -238,6 +239,7 @@ function calculate_crc8(bytes)
     {
 	console.log("Discover timeout");
 	if (device) {
+	    device.set_receive_handler(null);
 	    device.close();
 	}
 	tryNextDevice();

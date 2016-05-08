@@ -237,6 +237,7 @@ function calculate_crc8(bytes)
 	    processReply(reply);
 	    replyBuffer.splice(0,l);
 	} else {
+	    console.log("CRC invalid "+reply.join());
 	    replyBuffer = [];
 	}
     }

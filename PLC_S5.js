@@ -221,24 +221,27 @@ function calculate_crc8(bytes)
 	//console.log("Received: "+data.join());
 	replyBuffer.push.apply(replyBuffer, data);
 	console.log("Buffer: "+replyBuffer.join());
-	if (replyBuffer.length < 2) return;
-	var l = (replyBuffer[0] & 0xc0) >> 6;
-	if (l == 3) l = replyBuffer[1] + 1; // Length in separate byte
-	l += 2; // Include command and CRC
-	if (l > replyBuffer.length) return;
-	var reply = replyBuffer.slice(0,l);
-	if (calculate_crc8(reply) == 0) {
-	    // Stop discovery if we get a reply
-	    if (discoverTimeout != null && ((reply[0] & 0x20) != 0)) {
-		clearTimeout(discoverTimeout);
-		discoverTimeout = null;
+
+	// Handle all messages in buffer	
+	while (replyBuffer.length >= 2) { // A message is at least 2 bytes
+	    var l = (replyBuffer[0] & 0xc0) >> 6;
+	    if (l == 3) l = replyBuffer[1] + 1; // Length in separate byte
+	    l += 2; // Include command and CRC
+	    if (l > replyBuffer.length) break; // Not enough data in buffer
+	    var reply = replyBuffer.slice(0,l);
+	    if (calculate_crc8(reply) == 0) {
+		// Stop discovery if we get a reply
+		if (discoverTimeout != null && ((reply[0] & 0x20) != 0)) {
+		    clearTimeout(discoverTimeout);
+		    discoverTimeout = null;
+		}
+		console.log("CRC OK "+reply.join());
+		processReply(reply);
+		replyBuffer.splice(0,l);
+	    } else {
+		console.log("CRC invalid "+reply.join());
+		replyBuffer = [];
 	    }
-	    console.log("CRC OK "+reply.join());
-	    processReply(reply);
-	    replyBuffer.splice(0,l);
-	} else {
-	    console.log("CRC invalid "+reply.join());
-	    replyBuffer = [];
 	}
     }
     

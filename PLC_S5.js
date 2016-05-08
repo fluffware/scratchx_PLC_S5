@@ -220,7 +220,7 @@ function calculate_crc8(bytes)
 	data = new Uint8Array(data);
 	//console.log("Received: "+data.join());
 	replyBuffer.push.apply(replyBuffer, data);
-	//console.log("Buffer: "+replyBuffer.join());
+	console.log("Buffer: "+replyBuffer.join());
 	if (replyBuffer.length < 2) return;
 	var l = (replyBuffer[0] & 0xc0) >> 6;
 	if (l == 3) l = replyBuffer[1] + 1; // Length in separate byte

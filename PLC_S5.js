@@ -106,7 +106,7 @@ function calculate_crc8(bytes)
     var ainCallbacks = {}
 
     function sendRequest(req) {
-	console.log("Send request: "+req);
+	//console.log("Send request: "+req);
 	var crc = calculate_crc8(req);
 	bytes = new Uint8Array(req.concat([crc]));
 	device.send(bytes);
@@ -220,7 +220,7 @@ function calculate_crc8(bytes)
 	data = new Uint8Array(data);
 	//console.log("Received: "+data.join());
 	replyBuffer.push.apply(replyBuffer, data);
-	console.log("Buffer: "+replyBuffer.join());
+	//console.log("Buffer: "+replyBuffer.join());
 
 	// Handle all messages in buffer	
 	while (replyBuffer.length >= 2) { // A message is at least 2 bytes
@@ -235,7 +235,7 @@ function calculate_crc8(bytes)
 		    clearTimeout(discoverTimeout);
 		    discoverTimeout = null;
 		}
-		console.log("CRC OK "+reply.join());
+		//console.log("CRC OK "+reply.join());
 		processReply(reply);
 		replyBuffer.splice(0,l);
 	    } else {
